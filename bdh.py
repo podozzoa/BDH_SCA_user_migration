@@ -10,7 +10,7 @@ import requests
 
 KINDS = ("user_group", "project", "project_group", "global_role", "project_owner")
 FIELDS = ("id", "action", "domain", "source", "target", "id_type",
-          "kind", "resource", "role", "excel_rows", "approved")
+          "kind", "resource", "role", "application_lines", "approved")
 
 
 def read_json(path):
@@ -134,7 +134,12 @@ class Api:
             raise ValueError(f"Multiple exact user matches: {username}")
         if not matches:
             return None
-        user = matches[0]
+        return self.validate_user(matches[0])
+
+    @staticmethod
+    def validate_user(user):
+        if not isinstance(user.get("username"), str) or not user["username"]:
+            raise ValueError("User response must include username")
         if not user.get("id") or type(user.get("active")) is not bool:
             raise ValueError("User response must include id and boolean active")
         if user.get("type") not in {"INTERNAL", "EXTERNAL"}:
@@ -143,12 +148,14 @@ class Api:
 
     def rights(self, user, kind):
         context = {"user_id": user["id"], "username": user["username"]}
-        rights = set()
-        for row in self.operation(kind, context):
+        return {(row["resource"], row["role"]) for row in self.permission_rows(kind, context)}
+
+    def permission_rows(self, kind, context, operation=None):
+        rows = self.operation(operation or kind, context)
+        for row in rows:
             resource, role = row.get("resource"), row.get("role")
             if not isinstance(resource, str) or not isinstance(role, str):
                 raise ValueError(f"{kind}: resource and role must be strings")
             if not (role if kind == "global_role" else resource):
                 raise ValueError(f"{kind}: missing resource or role identifier")
-            rights.add((resource, role))
-        return rights
+        return rows

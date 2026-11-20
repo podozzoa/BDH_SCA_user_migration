@@ -1,16 +1,20 @@
 {
   "domains": {
-    "DOMAIN_FROM_EXCEL": {
+    "DOMAIN_FROM_CSV": {
       "url": "https://bdh.example.invalid",
       "token_env": "BDH_TOKEN",
       "ca_bundle": null
     }
   },
   "allowed_id_types": [
-    "REPLACE_WITH_APPROVED_EXCEL_VALUE"
+    "REPLACE_WITH_APPROVED_CSV_VALUE"
   ],
   "operations": {
     "users": null,
+    "list_users": null,
+    "group_global_role": null,
+    "group_project": null,
+    "group_project_group": null,
     "user_group": null,
     "project": null,
     "project_group": null,
@@ -23,7 +27,7 @@
     "grant_global_role": null,
     "deactivate": null
   },
-  "workbook_columns": [
+  "application_columns": [
     "Tool",
     "Domain",
     "Source Account",

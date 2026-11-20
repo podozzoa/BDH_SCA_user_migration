@@ -1,48 +1,47 @@
 import argparse
+import csv
 from collections import defaultdict
 from pathlib import Path
-
-from openpyxl import load_workbook
 
 from bdh import Api, FIELDS, KINDS, fingerprint, read_json, write_csv, write_json
 
 HEADERS = ("Tool", "Domain", "Source Account", "Target Account", "Account Type")
 
 
-def applications(path, sheet, domain, allowed, columns=HEADERS):
+def applications(path, domain, allowed, columns=HEADERS, encoding="utf-8-sig"):
     if len(columns) != len(HEADERS) or len(set(columns)) != len(HEADERS):
-        raise ValueError("Expected five distinct workbook columns")
-    workbook = load_workbook(path, read_only=True)
+        raise ValueError("Expected five distinct CSV columns")
     groups = defaultdict(list)
-    try:
-        rows = (workbook[sheet] if sheet else workbook.active).iter_rows(values_only=True)
-        header = [str(value or "").strip() for value in next(rows, ())]
+    with open(path, encoding=encoding, newline="") as stream:
+        rows = csv.reader(stream, strict=True)
+        header = [value.strip() for value in next(rows, ())]
         for name in columns:
             if header.count(name) != 1:
                 raise ValueError(f"Expected one column named {name}")
         indexes = [header.index(name) for name in columns]
-        for number, row in enumerate(rows, 2):
-            tool, row_domain, source, target, id_type = (row[index] for index in indexes)
-            if str(tool or "").strip().casefold() != "black duck":
+        for row in rows:
+            number = rows.line_num
+            if not any(value.strip() for value in row):
                 continue
-            if not isinstance(row_domain, str) or not row_domain.strip():
-                raise ValueError(f"Row {number}: missing Domain")
-            if row_domain.strip() != domain:
+            if len(row) != len(header):
+                raise ValueError(f"CSV line {number}: column count differs from header")
+            tool, row_domain, source, target, id_type = (row[index].strip() for index in indexes)
+            if tool.casefold() != "black duck":
                 continue
-            if any(not isinstance(value, str) or not value.strip()
-                   for value in (source, target, id_type)):
-                raise ValueError(f"Row {number}: use text for both IDs and ID type")
-            source, target, id_type = (value.strip() for value in (source, target, id_type))
+            if not row_domain:
+                raise ValueError(f"CSV line {number}: missing Domain")
+            if row_domain != domain:
+                continue
+            if not all((source, target, id_type)):
+                raise ValueError(f"CSV line {number}: missing account ID or account type")
             if id_type not in allowed:
-                raise ValueError(f"Row {number}: unconfigured ID type {id_type!r}")
+                raise ValueError(f"CSV line {number}: unconfigured ID type {id_type!r}")
             if source.casefold() == target.casefold():
-                raise ValueError(f"Row {number}: same source and target account")
+                raise ValueError(f"CSV line {number}: same source and target account")
             if any(value.startswith("=") or any(char.isspace() or char in ",;" for char in value)
                    for value in (source, target)):
-                raise ValueError(f"Row {number}: expected one ID per cell")
+                raise ValueError(f"CSV line {number}: expected one ID per field")
             groups[source, target, id_type].append(number)
-    finally:
-        workbook.close()
     if not groups:
         raise ValueError("No Black Duck rows matched this domain")
     sources = {key[0].casefold() for key in groups}
@@ -56,13 +55,14 @@ def applications(path, sheet, domain, allowed, columns=HEADERS):
 
 def main():
     parser = argparse.ArgumentParser()
-    for name in ("config", "workbook", "domain", "out"):
+    for name in ("config", "applications", "domain", "out"):
         parser.add_argument("--" + name, required=True)
-    parser.add_argument("--sheet")
+    parser.add_argument("--encoding", choices=("utf-8-sig", "cp949"), default="utf-8-sig")
     args = parser.parse_args()
     config = read_json(args.config)
-    groups = applications(args.workbook, args.sheet, args.domain,
-                          config["allowed_id_types"], config.get("workbook_columns", HEADERS))
+    groups = applications(args.applications, args.domain, config["allowed_id_types"],
+                          config.get("application_columns", config.get("workbook_columns", HEADERS)),
+                          args.encoding)
     api = Api(config, args.domain)
     users = {}
     for name in sorted({name for source, target, _ in groups for name in (source, target)}):

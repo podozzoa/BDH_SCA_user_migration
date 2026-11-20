@@ -63,6 +63,7 @@ def main():
         parser.add_argument("--" + name, required=True)
     parser.add_argument("--phase", choices=PHASES, required=True)
     parser.add_argument("--execute", action="store_true")
+    parser.add_argument("--encoding", choices=("utf-8-sig", "cp949"), default="utf-8-sig")
     args = parser.parse_args()
     directory = Path(args.plan_dir)
     config = read_json(args.config)
@@ -73,17 +74,23 @@ def main():
     rows = {row["id"]: row for row in plan["rows"]}
     selected = []
     seen = set()
-    with open(args.review, encoding="utf-8-sig", newline="") as stream:
+    with open(args.review, encoding=args.encoding, newline="") as stream:
         reader = csv.DictReader(stream)
-        if reader.fieldnames != list(FIELDS):
+        fields = tuple("excel_rows" if field == "application_lines" and
+                       "excel_rows" in (reader.fieldnames or ()) else field for field in FIELDS)
+        if reader.fieldnames != list(fields):
             raise ValueError("Unexpected approval CSV header")
         for reviewed in reader:
+            if None in reviewed or any(value is None for value in reviewed.values()):
+                raise ValueError(f"Invalid approval CSV at line {reader.line_num}")
+            if "excel_rows" in reviewed:
+                reviewed["application_lines"] = reviewed.pop("excel_rows")
             key = reviewed["id"]
             if key in seen or key not in rows:
                 raise ValueError("Duplicate or unknown plan ID")
             seen.add(key)
             row = rows[key]
-            if any(reviewed[field] != safe_cell(row[field]) for field in FIELDS[:-1]):
+            if any(reviewed[field] != safe_cell(row.get(field, row.get("excel_rows", ""))) for field in FIELDS[:-1]):
                 raise ValueError("Only the approved column can be edited")
             approved = reviewed["approved"].strip().upper()
             if approved not in {"", "YES", "NO"}:
@@ -108,7 +115,8 @@ def main():
             status, error = perform(api, row, snapshot, args.execute), ""
         except (ValueError, RuntimeError, LookupError, OSError) as exc:
             status, error = "FAILED", str(exc)
-        results.append({**row, "approved": "YES", "status": status, "error": error})
+        results.append({**row, "application_lines": row.get("application_lines", row.get("excel_rows", "")),
+                        "approved": "YES", "status": status, "error": error})
         write_csv(args.result, results, FIELDS + ("status", "error"))
     if any(row["status"] == "FAILED" for row in results):
         raise SystemExit(1)
