@@ -75,12 +75,17 @@ py ApplyMigrationPlan.py --config config.json --plan-dir plan-01 --review approv
 
 ## 도메인별 계정과 권한 조회
 
-신청 CSV와 관계없이 구성된 서버에서 계정을 조회합니다. `list_users`에는 사용자명 검색 조건이 없는 전체 조회 API를 설정합니다. `users`와 동일한 정규화 필드가 필요하며, 활성·비활성 계정이 모두 반환되도록 조회 조건과 페이지네이션을 설정합니다. 인스턴스가 서로 다른 API 형식을 쓰면 구성 파일을 나눠 실행합니다.
+사용자 목록 기본값의 근거는 [Black Duck Python SDK 사용자 API](https://github.com/blackducksoftware/hub-rest-api-python/blob/master/blackduck/Users.py)와 [공식 전체 사용자 조회 예제](https://github.com/blackducksoftware/hub-rest-api-python/blob/master/examples/client/get_users.py)입니다. 설치 버전별 지원 범위는 [Black Duck REST API 안내](https://docs.blackduck.com/r/integration_explorer/latest/integrations-finder/apis-for-black-duck-products.html)를 참고합니다.
+
+신청 CSV와 관계없이 구성된 서버에서 계정을 조회합니다. `list_users`에는 사용자명 검색 조건이 없는 전체 조회 API를 설정합니다. `config.example.json`은 공식 Python SDK의 사용자 조회를 바탕으로 `/api/users`, `user-4+json`, `limit`·`offset`을 기본으로 제공합니다. `users`와 동일한 정규화 필드가 필요하며, 활성·비활성 계정이 모두 반환되도록 조회 조건과 페이지네이션을 설정합니다. 인스턴스가 서로 다른 API 형식을 쓰면 구성 파일을 나눠 실행합니다.
 
 ```powershell
 py ExportAccountInventory.py --config config.json --domain example --out inventory-example
 py ExportAccountInventory.py --config config.json --all-domains --out inventory-all
+py ExportAccountInventory.py --config config.json --all-domains --out accounts-all --accounts-only
 ```
+
+`--accounts-only`는 사용자 목록 설정만 사용합니다. `users.csv`와 `summary.json`을 생성하며 권한 행 수는 조회하지 않았음을 나타내는 `null`입니다. 기존 설정 파일을 사용 중인 경우 새 예시의 `operations.list_users` 항목을 복사합니다. 서버에서 반환되는 활성·비활성 계정 수는 관리자 화면과 대조합니다.
 
 - `users.csv`는 도메인, 계정 ID, 사용자명, Internal/External 유형, 활성 상태를 기록합니다.
 - `permissions.csv`는 User Group 가입, 직접 Global Role, Project Role, Project Group Role, Project Owner를 기록합니다. API 응답에서 `resource_name`과 `role_name`을 정규화하면 이름도 출력합니다.

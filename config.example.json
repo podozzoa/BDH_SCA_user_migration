@@ -11,7 +11,17 @@
   ],
   "operations": {
     "users": null,
-    "list_users": null,
+    "list_users": {
+      "path": "/api/users",
+      "Accept": "application/vnd.blackducksoftware.user-4+json",
+      "items": "items[].{username: userName, href: _meta.href, type: type, active: active}",
+      "pagination": {
+        "offset": "offset",
+        "limit": "limit",
+        "total": "totalCount",
+        "size": 100
+      }
+    },
     "group_global_role": null,
     "group_project": null,
     "group_project_group": null,

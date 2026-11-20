@@ -140,6 +140,11 @@ class Api:
     def validate_user(user):
         if not isinstance(user.get("username"), str) or not user["username"]:
             raise ValueError("User response must include username")
+        if not user.get("id") and isinstance(user.get("href"), str):
+            path = urlsplit(user["href"]).path.rstrip("/")
+            prefix = "/api/users/"
+            if path.startswith(prefix) and path[len(prefix):] and "/" not in path[len(prefix):]:
+                user = {**user, "id": path[len(prefix):]}
         if not user.get("id") or type(user.get("active")) is not bool:
             raise ValueError("User response must include id and boolean active")
         if user.get("type") not in {"INTERNAL", "EXTERNAL"}:
