@@ -1,0 +1,8 @@
+*
+!.gitignore
+!README.md
+!requirements.txt
+!config.example.json
+!bdh.py
+!ExportMigrationPlan.py
+!ApplyMigrationPlan.py

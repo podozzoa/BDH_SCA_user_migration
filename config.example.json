@@ -1,0 +1,33 @@
+{
+  "domains": {
+    "DOMAIN_FROM_EXCEL": {
+      "url": "https://bdh.example.invalid",
+      "token_env": "BDH_TOKEN",
+      "ca_bundle": null
+    }
+  },
+  "allowed_id_types": [
+    "REPLACE_WITH_APPROVED_EXCEL_VALUE"
+  ],
+  "operations": {
+    "users": null,
+    "user_group": null,
+    "project": null,
+    "project_group": null,
+    "global_role": null,
+    "project_owner": null,
+    "create_external": null,
+    "grant_user_group": null,
+    "grant_project": null,
+    "grant_project_group": null,
+    "grant_global_role": null,
+    "deactivate": null
+  },
+  "workbook_columns": [
+    "Tool",
+    "Domain",
+    "Source Account",
+    "Target Account",
+    "Account Type"
+  ]
+}
